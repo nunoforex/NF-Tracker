@@ -1,0 +1,90 @@
+// backend/models/User.js
+const mongoose = require("mongoose");
+
+const UserSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  password: String
+});
+
+module.exports = mongoose.model("User", UserSchema);
+
+// backend/models/Trade.js
+const mongoose = require("mongoose");
+
+const TradeSchema = new mongoose.Schema({
+  symbol: String,
+  entry: Number,
+  exit: Number,
+  bos: Boolean,
+  zone: Boolean,
+  trend: Boolean,
+  confluence: Number,
+  date: { type: Date, default: Date.now }
+});
+
+module.exports = mongoose.model("Trade", TradeSchema);
+
+// backend/routes/auth.js
+const express = require("express");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+const router = express.Router();
+
+router.post("/signup", async (req, res) => {
+  const { username, password } = req.body;
+  const hashed = await bcrypt.hash(password, 10);
+  await User.create({ username, password: hashed });
+  res.json({ message: "Signup successful" });
+});
+
+router.post("/login", async (req, res) => {
+  const { username, password } = req.body;
+  const user = await User.findOne({ username });
+  if (user && await bcrypt.compare(password, user.password)) {
+    const token = jwt.sign({ id: user._id }, "secret");
+    res.json({ token });
+  } else {
+    res.status(401).json({ error: "Invalid credentials" });
+  }
+});
+
+module.exports = router;
+
+// backend/routes/trade.js
+const express = require("express");
+const Trade = require("../models/Trade");
+const router = express.Router();
+
+function calculateConfluence(bos, zone, trend) {
+  let score = 0;
+  if (bos) score += 40;
+  if (zone) score += 30;
+  if (trend) score += 30;
+  return score;
+}
+
+router.post("/trade", async (req, res) => {
+  const { symbol, entry, exit, bos, zone, trend } = req.body;
+  const confluence = calculateConfluence(bos, zone, trend);
+  await Trade.create({ symbol, entry, exit, bos, zone, trend, confluence });
+  res.json({ message: "Trade logged", confluence });
+});
+
+module.exports = router;
+
+// backend/server.js
+const express = require("express");
+const mongoose = require("mongoose");
+const authRoutes = require("./routes/auth");
+const tradeRoutes = require("./routes/trade");
+
+const app = express();
+app.use(express.json());
+
+mongoose.connect("mongodb://localhost/nfjournal");
+
+app.use("/auth", authRoutes);
+app.use("/trade", tradeRoutes);
+
+app.listen(5000, () => console.log("NF Journal backend running"));
