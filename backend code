@@ -88,3 +88,4 @@ app.use("/auth", authRoutes);
 app.use("/trade", tradeRoutes);
 
 app.listen(5000, () => console.log("NF Journal backend running"));
+node server.js
