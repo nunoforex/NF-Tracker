@@ -58,3 +58,4 @@ function Dashboard({ trades }) {
     </div>
   );
 }
+npm start
